@@ -8,6 +8,14 @@
 
 **Input**: User description: "create class to handle customer related API endpoints"
 
+## Clarifications
+
+### Session 2026-08-23
+
+- Q: Which customer fields must the library require and validate locally (before any remote call) when creating a customer? → A: Email + full name (first and last name) required locally; phone and integrator reference optional. The remote platform still enforces its own additional rules.
+- Q: When updating a customer, should the operation apply a partial update or a full replace? → A: Full replace — the caller must supply the complete customer record on every update; fields omitted from the update are cleared/reset.
+- Q: What pagination controls should the list operation expose, and what default and maximum page size should apply? → A: Expose page number and page size; default 20 records per page, maximum 100.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Create a customer (Priority: P1)
@@ -117,6 +125,12 @@ capability.
   operation MUST surface the platform's conflict/duplicate response as an error to the caller.
 - What happens when a page number beyond the available results is requested? An empty page MUST be
   returned.
+- What happens when a page size above the maximum (100) is requested? The library MUST reject the
+  request with a clear error or clamp the page size to 100, and the chosen behavior MUST be
+  documented (see FR-004).
+- What happens when an update omits a mutable field? Because update uses full-replace semantics
+  (FR-005), the omitted field is cleared/reset — callers MUST send the complete record to preserve
+  existing values.
 
 ## Requirements *(mandatory)*
 
@@ -130,13 +144,18 @@ capability.
   identifier.
 - **FR-003**: The library MUST allow an integrator to retrieve a single customer by its
   identifier.
-- **FR-004**: The library MUST allow an integrator to list customers, supporting pagination of
-  results.
-- **FR-005**: The library MUST allow an integrator to update the mutable details of an existing
-  customer.
-- **FR-006**: The library MUST validate that required customer details are present before
-  contacting the remote platform, returning a clear error identifying any missing or invalid field
-  without making a remote call.
+- **FR-004**: The library MUST allow an integrator to list customers using page-number pagination,
+  exposing both a page number and a page size. When page size is not supplied it MUST default to 20
+  records per page, and the library MUST NOT permit a page size greater than 100 (requests above
+  the maximum MUST be rejected or clamped to 100 with the behavior documented).
+- **FR-005**: The library MUST allow an integrator to update an existing customer using
+  full-replace semantics: the caller supplies the complete customer record and any mutable field
+  omitted from the update is cleared/reset rather than left unchanged.
+- **FR-006**: The library MUST validate, before contacting the remote platform, that the locally
+  required customer fields — email, first name, and last name — are present, returning a clear
+  error identifying any missing or invalid field without making a remote call. Phone and the
+  integrator-supplied reference are optional locally. The remote platform remains free to enforce
+  additional required-field and format rules, which MUST be surfaced per FR-009.
 - **FR-007**: The library MUST perform every customer operation against the environment (sandbox
   or production) selected on the client, and MUST NOT cross environments.
 - **FR-008**: The library MUST authenticate customer requests using the credentials configured on
@@ -153,12 +172,14 @@ capability.
 ### Key Entities *(include if feature involves data)*
 
 - **Customer**: Represents a person or organization registered with the Bank of Maldives platform
-  that payment activity can be associated with. Key attributes include a platform-assigned unique
-  identifier, contact details (such as name, email, and phone), and an integrator-supplied
-  reference for correlation with the integrator's own records. A customer may be associated with
-  payment instruments and transactions, though managing those is outside this feature.
+  that payment activity can be associated with. Attributes include a platform-assigned unique
+  identifier and contact details. **Required (validated locally before any remote call)**: email,
+  first name, last name. **Optional**: phone, and an integrator-supplied reference for correlation
+  with the integrator's own records. A customer may be associated with payment instruments and
+  transactions, though managing those is outside this feature.
 - **Customer List Page**: Represents a bounded subset of customer records returned for a single
-  list request, along with the information needed to request subsequent pages.
+  list request, along with the information needed to request subsequent pages. It is addressed by a
+  page number and a page size (default 20, maximum 100 records per page).
 
 ## Success Criteria *(mandatory)*
 
@@ -190,9 +211,11 @@ capability.
 - Managing a customer's payment instruments / tokenized cards (attaching, listing, or removing
   tokens) is a separate concern and is out of scope for this feature; this feature manages the
   customer record only.
-- The remote platform is the source of truth for customer records and for the exact set of
-  customer fields, their required/optional status, and uniqueness rules; the library mirrors that
-  contract rather than defining its own.
+- The remote platform is the source of truth for customer records, the full set of customer fields,
+  and uniqueness rules; the library mirrors that contract rather than defining its own. As an
+  exception, the library enforces a minimal local required-field set (email, first name, last name)
+  for fail-fast validation per FR-006; the remote platform may enforce additional required or format
+  rules on top of this.
 - Standard integration-library error handling applies: remote failures are surfaced as errors with
   actionable context rather than swallowed.
 
