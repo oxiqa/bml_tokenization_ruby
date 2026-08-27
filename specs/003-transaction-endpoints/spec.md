@@ -18,6 +18,15 @@
 - Q: How should the library handle a create call whose integrator reference was already used? → A: Idempotent — the library returns the existing transaction for a repeated integrator reference and does not create a second charge; the integrator reference is the idempotency key.
 - Q: What should the list operation support? → A: Paginated listing with optional filters by customer and by status (e.g. pending, succeeded, failed/cancelled); both filters are optional and may be combined.
 
+### Session 2026-08-27
+
+- Q: How should the transaction list operation paginate, and what page-size limits apply? → A: Match the customer resource — page-number pagination exposing a page number and a page size, default 20 records per page, maximum 100; a requested page size above 100 is rejected with a clear error.
+- Q: How should the library validate the currency before calling the platform? → A: MVR only — the library accepts only MVR and rejects any other currency with a validation error locally, before any remote call.
+- Q: What is the canonical set of transaction statuses the library exposes and allows as list filters? → A: Four distinct statuses — pending, succeeded, failed, and cancelled — where cancelled (customer-abandoned) is distinguishable from failed (declined/errored).
+- Q: When a create call reuses an integrator reference with different payment details, how should the library respond? → A: Reject as a conflict — an identical repeat returns the original transaction, but if a reused reference carries different material parameters (amount, currency, customer, or card) the library fails with a conflict error naming the mismatch.
+- Q: Is the customer return/redirect URL a required input, and does it apply to both create flows? → A: Required for the new-card hosted-redirect flow only (create rejects locally if missing); not required and ignored for the stored-card server-side charge flow.
+- Q: Is the integrator reference unique across all transactions, or only within a single customer? → A: Global — the reference must be unique across all transactions; reusing it triggers the idempotent return (or conflict) regardless of which customer is supplied.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Create a transaction (Priority: P1)
@@ -124,18 +133,28 @@ transactions. Delivers value as a browse/reconcile capability.
 - How does the system handle a remote platform outage or timeout? The operation MUST surface a
   clear, actionable error to the caller rather than hanging indefinitely or returning a partial
   record.
-- What happens when a transaction is created with an unsupported or malformed currency? The
-  operation MUST fail with an error naming the currency field and MUST NOT create a transaction.
+- What happens when a transaction is created with a currency other than MVR, or a malformed
+  currency? The operation MUST fail locally with an error naming the currency field and MUST NOT
+  create a transaction or make a remote call (see FR-005c).
+- What happens when a new-card (hosted-redirect) transaction is created without a return/redirect
+  URL? The operation MUST fail locally with an error naming the return URL and MUST NOT make a
+  remote call; the return URL is not required for the stored-card charge flow (see FR-002).
 - What happens when the amount is zero, negative, non-integer (a decimal/fractional minor unit), or
   below/above the platform's accepted limits? The operation MUST fail with a validation error
   identifying the amount, and MUST NOT create a transaction (see FR-005b).
 - What happens when a transaction is retrieved while payment is still in progress? Its status MUST
   reflect a pending/unresolved state, distinguishable from a succeeded or failed outcome.
-- What happens when a duplicate integrator reference is submitted? The operation MUST be
-  idempotent: it returns the existing transaction for that reference and does not create a second
-  transaction or initiate a second charge (see FR-013).
+- What happens when a duplicate integrator reference is submitted? If the request parameters are
+  identical, the operation MUST be idempotent: it returns the existing transaction for that
+  reference and does not create a second transaction or initiate a second charge. If the reused
+  reference carries different material parameters (amount, currency, customer, or card), the
+  operation MUST fail with a conflict error naming the mismatch and MUST NOT create a transaction or
+  charge (see FR-013). Reference uniqueness is global, so a reference reused under a different
+  customer is treated the same way.
 - What happens when a page number beyond the available results is requested? An empty page MUST be
   returned.
+- What happens when a page size above the maximum (100) is requested? The library MUST reject the
+  request with a clear error naming the page size (see FR-004).
 
 ## Requirements *(mandatory)*
 
@@ -152,25 +171,36 @@ transactions. Delivers value as a browse/reconcile capability.
   record MUST include a hosted payment URL the customer is directed to in order to complete payment,
   and the transaction's initial status MUST be pending; (b) when a card-on-file safe reference is
   supplied, the transaction MUST be charged server-side without a hosted redirect, and the returned
-  record MUST reflect the resulting status (succeeded or failed) directly.
+  record MUST reflect the resulting status (succeeded or failed) directly. A customer return/redirect
+  URL MUST be supplied for the hosted-redirect flow (path a) and the library MUST reject a create
+  call locally, without a remote call, if it is missing; the return URL is not required for the
+  stored-card charge flow (path b) and is ignored there.
 - **FR-003**: The library MUST allow an integrator to retrieve a single transaction by its
   identifier, returning its current status and details.
-- **FR-004**: The library MUST allow an integrator to list transactions, supporting pagination of
-  results and optional filtering by customer and by status (e.g. pending, succeeded,
-  failed/cancelled); the filters MUST be optional and combinable. An invalid filter value (e.g. an
+- **FR-004**: The library MUST allow an integrator to list transactions using page-number
+  pagination, exposing both a page number and a page size. When page size is not supplied it MUST
+  default to 20 records per page, and the library MUST NOT permit a page size greater than 100
+  (a requested page size above 100 MUST be rejected with a clear error). The list MUST support
+  optional filtering by customer and by status (one of `pending`, `succeeded`, `failed`, or
+  `cancelled`); the filters MUST be optional and combinable. An invalid filter value (e.g. an
   unrecognized status) MUST fail with a validation error identifying the offending filter.
 - **FR-005**: The library MUST validate that required transaction inputs are present and
-  well-formed (including a supported currency and an existing-customer identifier) before contacting
-  the remote platform, returning a clear error identifying any missing or invalid field without
-  making a remote call.
+  well-formed (including a supported currency per FR-005c and an existing-customer identifier)
+  before contacting the remote platform, returning a clear error identifying any missing or invalid
+  field without making a remote call.
 - **FR-005a**: Every transaction MUST reference an existing customer; the library MUST NOT create a
   guest/anonymous transaction. Creating a transaction for a customer identifier that does not exist
   MUST fail with an error identifying the missing customer, and no transaction MUST be created.
 - **FR-005b**: The amount MUST be expressed as a positive integer in the currency's smallest (minor)
   unit; the library MUST reject non-integer, zero, or negative amounts with a validation error
   naming the amount field, without making a remote call.
-- **FR-006**: The library MUST expose the transaction's status in a way that lets the integrator
-  distinguish at least the pending/in-progress, succeeded, and failed/cancelled outcomes.
+- **FR-005c**: The library MUST accept only MVR as the transaction currency; any other currency
+  value MUST be rejected locally with a validation error naming the currency field, before any
+  remote call is made.
+- **FR-006**: The library MUST expose the transaction's status using four distinct canonical
+  values — `pending` (in progress/unresolved), `succeeded`, `failed` (declined or errored), and
+  `cancelled` (customer-abandoned) — such that a cancelled payment is distinguishable from a failed
+  one.
 - **FR-007**: The library MUST perform every transaction operation against the environment (sandbox
   or production) selected on the client, and MUST NOT cross environments.
 - **FR-008**: The library MUST authenticate transaction requests using the credentials configured
@@ -187,23 +217,28 @@ transactions. Delivers value as a browse/reconcile capability.
 - **FR-012**: Every transaction create and retrieve operation MUST be recorded in the audit trail
   (who, what, when, and outcome) sufficient to reconstruct access, without including any sensitive
   authentication data or full card number, per the constitution's auditability principle.
-- **FR-013**: Creating a transaction MUST be idempotent on the integrator-supplied reference: if a
-  transaction with the same reference already exists, the library MUST return that existing
-  transaction and MUST NOT create a second transaction or initiate a second charge. The
-  integrator-supplied reference is the idempotency key.
+- **FR-013**: Creating a transaction MUST be idempotent on the integrator-supplied reference, which
+  is the idempotency key and MUST be unique across all transactions (a global namespace, not scoped
+  per customer). If a transaction with the same reference already exists and the new request's
+  material parameters (amount, currency, customer, and card, if any) are identical, the library MUST
+  return that existing transaction and MUST NOT create a second transaction or initiate a second
+  charge. If the same reference is reused with any differing material parameter, the library MUST
+  fail with a conflict error identifying the mismatch and MUST NOT create a transaction or initiate
+  a charge.
 
 ### Key Entities *(include if feature involves data)*
 
 - **Transaction**: Represents a single payment initiated on the Bank of Maldives platform. Key
   attributes include a platform-assigned unique identifier, an amount (a positive integer in the
-  currency's minor unit) and currency, an integrator-supplied reference for correlation, a status
-  reflecting the payment lifecycle
-  (pending, succeeded, failed/cancelled), a required association to an existing customer, and —
+  currency's minor unit) and currency (MVR only), an integrator-supplied reference for correlation,
+  a status reflecting the payment lifecycle — one of four distinct values `pending`, `succeeded`,
+  `failed`, or `cancelled` — a required association to an existing customer, and —
   depending on the completion path — either a hosted payment URL (for the redirect flow when no
   stored card is supplied) or an association to a card on file by safe reference (for the
   server-side charge flow). The transaction never exposes a full card number or security code.
 - **Transaction List Page**: Represents a bounded subset of transaction records returned for a
-  single list request, along with the information needed to request subsequent pages.
+  single list request, along with the information needed to request subsequent pages. It is
+  addressed by a page number and a page size (default 20, maximum 100 records per page).
 
 ## Success Criteria *(mandatory)*
 
@@ -216,14 +251,17 @@ transactions. Delivers value as a browse/reconcile capability.
   end-to-end against the sandbox environment.
 - **SC-003**: Every invalid-input scenario returns an error that names the specific offending field,
   verified for 100% of required fields (including amount and currency).
-- **SC-004**: The status of any transaction can be determined by retrieval such that pending,
-  succeeded, and failed/cancelled outcomes are unambiguously distinguishable in 100% of cases.
+- **SC-004**: The status of any transaction can be determined by retrieval such that the four
+  outcomes pending, succeeded, failed, and cancelled are unambiguously distinguishable in 100% of
+  cases.
 - **SC-005**: No transaction operation exposes a full card number or card security code in any
   input, returned record, error, or log (verified by inspection across all operations).
 - **SC-006**: A transaction created in sandbox is never visible in production and vice versa,
   confirmed by environment isolation testing.
-- **SC-007**: Re-submitting create with an already-used integrator reference results in 0 duplicate
-  transactions and 0 additional charges in 100% of cases; the original transaction is returned.
+- **SC-007**: Re-submitting create with an already-used integrator reference and identical
+  parameters results in 0 duplicate transactions and 0 additional charges in 100% of cases; the
+  original transaction is returned. Re-submitting the same reference with any differing material
+  parameter returns a conflict error and creates 0 transactions and 0 charges in 100% of cases.
 
 ## Assumptions
 
@@ -240,10 +278,15 @@ transactions. Delivers value as a browse/reconcile capability.
   previously authorized transaction are out of scope unless later confirmed to be supported by the
   remote platform and required.
 - The remote platform is the source of truth for transaction records and for the exact set of
-  transaction fields, their required/optional status, supported currencies, amount limits, and
-  uniqueness rules; the library mirrors that contract rather than defining its own. Duplicate
-  handling is normalized by the library to an idempotent outcome on the integrator reference (return
-  the existing transaction) regardless of the platform's raw response.
+  transaction fields, their required/optional status, amount limits, and
+  uniqueness rules; the library mirrors that contract rather than defining its own. Currency is the
+  one exception: the library constrains it to MVR and rejects any other currency locally before a
+  remote call (see FR-005c), rather than deferring the supported-currency set to the platform.
+  Duplicate
+  handling is normalized by the library to an idempotent outcome on the integrator reference:
+  an identical repeat returns the existing transaction, while a reused reference with differing
+  material parameters yields a conflict error — regardless of the platform's raw response. The
+  reference is a global idempotency key (unique across all transactions, not per customer).
 - The actual payment authorization and settlement are performed by the remote platform; this
   library initiates and observes transactions but does not itself move funds or process card data.
 - Where a payment reuses a stored card, the card is referenced by the safe reference produced by
