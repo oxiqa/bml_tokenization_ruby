@@ -10,6 +10,13 @@
 
 ## Clarifications
 
+### Session 2026-08-27
+
+- Q: When a card-on-file call to the remote platform fails with a transient error (timeout, connection drop, 5xx), how should the library behave? → A: Fail fast by default but apply a bounded automatic retry (up to 2) with backoff on transient/timeout errors; expose a configurable request timeout; surface a clear error when retries are exhausted.
+- Q: Beyond removal, which card-on-file operations must produce an audit record? → A: State-changing operations only — store and remove (record who, which card reference, and when; no card data beyond the safe reference). Reads (list/retrieve) are not audited.
+- Q: How should the library treat a rate-limit ("too many requests" / 429) response from the remote platform? → A: Treat it as transient — retry within the FR-014 bounded budget, honoring the platform's retry-after hint for backoff, and surface a clear rate-limit error if still limited after retries.
+- Q: In the store/remove audit records, what identifies the "who" that performed the action? → A: The configured client/API identity (e.g., App ID), plus an optional integrator-supplied actor reference captured when provided.
+
 ### Session 2026-08-17
 
 - Q: How does a cardholder's card data reach the platform when storing a card on file? → A: The library accepts a pre-tokenized / single-use card handle produced by a hosted capture step (hosted fields / SDK); the raw card number and security code never transit this library.
@@ -120,12 +127,17 @@ capability.
 - What happens when the same card is stored twice for the same customer? The operation MUST be
   idempotent: it returns the existing card-on-file record and does not create a duplicate entry
   (see FR-013).
-- How does the system handle a remote platform outage or timeout? The operation MUST surface a
-  clear, actionable error rather than hanging or returning a partial record.
+- How does the system handle a remote platform outage or timeout? The operation MUST apply a
+  bounded automatic retry (at most 2, with backoff) on transient failures within the configured
+  request timeout, and if still unsuccessful MUST surface a clear, actionable error rather than
+  hanging or returning a partial record (see FR-014).
 - What happens when a card on file has expired? Its expiry status MUST be discoverable, and any
   attempt to use it for payment MUST be rejectable based on that status.
 - What happens if the client is misconfigured (missing or invalid credentials)? The operation MUST
   fail with an authentication/configuration error rather than silently returning empty results.
+- What happens when the platform rate-limits the client ("too many requests")? The operation MUST
+  retry within the bounded retry budget, honoring any retry-after hint, and surface a
+  distinguishable rate-limit error if still limited afterward (see FR-014).
 
 ## Requirements *(mandatory)*
 
@@ -148,8 +160,9 @@ capability.
   longer be used for payments. Removal MUST permanently delete the card-on-file record (not merely
   deactivate it); the removed card MUST NOT be retrievable or recoverable afterward.
 - **FR-006a**: A removal MUST produce an audit record capturing who removed which card reference
-  and when, per the constitution's auditability principle; the audit record MUST NOT contain card
-  data (no full number, no masked summary beyond the safe reference).
+  and when, per the constitution's auditability principle; "who" is the configured client/API
+  identity plus any optional integrator-supplied actor reference (see FR-015). The audit record
+  MUST NOT contain card data (no full number, no masked summary beyond the safe reference).
 - **FR-007**: The library MUST validate that required inputs (customer association and card
   details) are present and well-formed before contacting the remote platform, returning a clear
   error identifying any missing or invalid input without making a remote call.
@@ -160,6 +173,23 @@ capability.
 - **FR-010**: The library MUST surface remote platform errors (validation, not-found, conflict,
   authentication, and availability errors) to the caller with actionable context, distinguishable
   by error condition.
+- **FR-014**: The library MUST expose a configurable per-request timeout for every card-on-file
+  operation, and on transient failures (network timeout, connection drop, or 5xx/"try again"
+  responses) MUST apply a bounded automatic retry (at most 2 retries) with backoff before failing.
+  When retries are exhausted, the library MUST surface a clear, actionable error rather than
+  hanging. Non-transient errors (validation, not-found, authentication) MUST NOT be retried. A
+  rate-limit ("too many requests") response MUST be treated as transient and retried within the
+  same bounded budget, honoring any retry-after hint the platform supplies for backoff; if the
+  request is still rate-limited after retries, the library MUST surface a distinguishable
+  rate-limit error.
+- **FR-015**: State-changing card-on-file operations MUST produce an audit record, per the
+  constitution's auditability principle: storing a card and removing a card each MUST record who
+  performed the action, which card reference it affected, and when. The "who" MUST be the
+  configured client/API identity (e.g., the App ID the client authenticates with); the library
+  MUST also accept an optional integrator-supplied actor reference and, when provided, record it in
+  the audit record. Read operations (list, retrieve) are NOT audited. No audit record may contain
+  card data beyond the safe reference (no full number, no masked summary). (Removal auditing is
+  further specified in FR-006a.)
 - **FR-011**: Each card on file MUST be associable with the customer that owns it, so that cards
   can be listed and controlled per customer.
 - **FR-012**: Every card-on-file operation MUST be independently testable against the sandbox
