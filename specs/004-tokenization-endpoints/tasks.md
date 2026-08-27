@@ -154,6 +154,9 @@ card-on-file record is NOT deleted/altered; revoking unknown/already-revoked →
 - [ ] T036 [P] Run dependency vulnerability scan (`bundle exec bundler-audit`) and confirm no secrets are committed (Constitution: dependencies tracked, secrets scanning)
 - [ ] T037 Run `bundle exec rubocop` and resolve style/formatting across `lib/` and `spec/`
 - [ ] T038 Execute `quickstart.md` validation scenarios V1–V12 and confirm all pass
+- [ ] T039 [P] Environment-isolation test (credential-gated): assert a token reference issued in **sandbox** is reported not-found/invalid when the client is configured for **production** (and, where prod creds exist, the reverse), in `spec/integration/environment_isolation_sandbox_spec.rb` (FR-008, SC-005)
+- [ ] T040 [P] Idempotency-isolation test (credential-gated): assert the same card handle tokenized under a **different account or environment** yields a **distinct, uncorrelated** token (complements the same-account/same-env "same token" check in T014/T018), in `spec/integration/tokenize_isolation_sandbox_spec.rb` (FR-011, SC-006)
+- [ ] T041 [P] Token-strength inspection test: over a sample of issued/stubbed tokens, assert the token reference is **non-sequential** and shares **no derivable substring** with the PAN/last-four (the library neither generates nor shortens the token), in `spec/unit/token_strength_spec.rb`; if non-sequentiality is treated as a platform-owned guarantee, record that decision in `research.md` instead (FR-006, SC-007)
 
 ---
 
@@ -187,7 +190,7 @@ card-on-file record is NOT deleted/altered; revoking unknown/already-revoked →
   while T006→T010→T012 form the transport chain.
 - All per-story **test** tasks are `[P]` (distinct spec files): T013/T014/T015, T020/T021/T022,
   T026/T027/T028.
-- Polish T033, T034, T035, T036 in parallel.
+- Polish T033, T034, T035, T036, T039, T040, T041 in parallel (distinct files).
 
 ---
 
@@ -216,7 +219,8 @@ Task: "Integration (sandbox) test for tokenize in spec/integration/tokenize_sand
 2. US1 (tokenize) → validate → ship MVP.
 3. US2 (retrieve) → validate → ship.
 4. US3 (revoke) → validate → ship.
-5. Polish → leakage sweep, no-detokenization guard, docs, audit scan, quickstart V1–V12.
+5. Polish → leakage sweep, no-detokenization guard, environment/account isolation + token-strength
+   checks, docs, audit scan, quickstart V1–V12.
 
 ### Notes
 

@@ -117,6 +117,10 @@ spec/                             # RSpec
     └── masking_spec.rb           # ensures no PAN/CVV in any rendered output/log
 ```
 
+> Note: tasks.md refines this into per-operation spec files (e.g. `tokenize_contract_spec.rb`,
+> `retrieve_contract_spec.rb`, `revoke_contract_spec.rb`, and `*_sandbox_spec.rb`) so tests across
+> stories parallelize; the grouping above is indicative, not binding.
+
 **Structure Decision**: Single Ruby gem (Project Type = library). The tokenization capability is one
 new resource class (`BmlTokenization::Tokenization`) plus a `Token` value object, layered on the
 existing shared `Client`/`errors`/`resource` plumbing. Masking and audit are shared cross-cutting
