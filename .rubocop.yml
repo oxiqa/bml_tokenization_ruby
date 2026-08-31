@@ -17,6 +17,12 @@ Naming/PredicatePrefix:
 Style/StringLiterals:
   EnforcedStyle: double_quotes
 
+# The configured Client exposes each capability (env, credentials, timeout,
+# retry policy, audit sink) as an explicit keyword with a default; keyword
+# configuration args read clearer than a bundled options object here.
+Metrics/ParameterLists:
+  CountKeywordArgs: false
+
 Metrics/MethodLength:
   Max: 25
 
