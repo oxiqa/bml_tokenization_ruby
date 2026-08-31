@@ -17,6 +17,7 @@ module BmlTokenization
       pan card_number cardnumber number cvv cvv2 cvc cvn pin
       track track1 track2 track_data password secret token
       api_key apikey app_id authorization auth
+      card_handle handle
     ].freeze
 
     # Customer PII keys that are minimized (partially masked) rather than
