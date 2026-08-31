@@ -32,9 +32,9 @@ specs under `spec/` at the repository root.
 
 **Purpose**: Gem project initialization and test tooling.
 
-- [ ] T001 Create/verify the Ruby gem project structure at repo root: `bml_tokenization.gemspec`, `Gemfile`, `lib/bml_tokenization.rb` (entrypoint that requires the resource files, incl. the new card-on-file files), and the `lib/bml_tokenization/` and `spec/` directories per plan.md — reuse if a sibling feature (001/003/004) already created them
-- [ ] T002 Ensure RSpec and WebMock are development dependencies (in `bml_tokenization.gemspec`/`Gemfile`) and that `.rspec` plus `spec/spec_helper.rb` load WebMock and disable real HTTP by default — reuse/verify if already present
-- [ ] T003 [P] Ensure RuboCop linting/formatting is configured in `.rubocop.yml` at repo root — reuse/verify if already present
+- [X] T001 Create/verify the Ruby gem project structure at repo root: `bml_tokenization.gemspec`, `Gemfile`, `lib/bml_tokenization.rb` (entrypoint that requires the resource files, incl. the new card-on-file files), and the `lib/bml_tokenization/` and `spec/` directories per plan.md — reuse if a sibling feature (001/003/004) already created them
+- [X] T002 Ensure RSpec and WebMock are development dependencies (in `bml_tokenization.gemspec`/`Gemfile`) and that `.rspec` plus `spec/spec_helper.rb` load WebMock and disable real HTTP by default — reuse/verify if already present
+- [X] T003 [P] Ensure RuboCop linting/formatting is configured in `.rubocop.yml` at repo root — reuse/verify if already present
 
 ---
 
@@ -48,17 +48,17 @@ verify and reuse rather than duplicate. The `transport` (timeout + bounded retry
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T004 Establish/verify the shared configured `Client` (base URL, sandbox/production environment selection, credential/auth injection, TLS-only transport, configurable request timeout) in `lib/bml_tokenization/client.rb` (FR-008, FR-009, FR-014, Constitution I/III)
-- [ ] T005 [P] Establish/extend the shared mapped error hierarchy — validation, not-found, conflict, authentication/config, **rate-limit**, and availability/timeout — in `lib/bml_tokenization/errors.rb` (FR-010, FR-014)
-- [ ] T006 [P] Establish/verify base `Resource` HTTP/JSON request-response behavior (build request, parse JSON, dispatch to error mapping, route through the transport concern) in `lib/bml_tokenization/resource.rb`
-- [ ] T007 [P] Establish/verify the shared masking + structured-logging concern (scrubs SAD/PAN, never logs the single-use handle; logs only safe reference/outcome) in `lib/bml_tokenization/masking.rb` (FR-003, Constitution IV)
-- [ ] T008 [P] Write failing unit spec for the shared transport concern in `spec/unit/transport_spec.rb` — asserts a configurable timeout; bounded automatic retry (≤2, with backoff) on transient failures (connection error, timeout, 5xx); non-transient errors (validation, not-found, auth) are NOT retried; a 429 is retried honoring `Retry-After` and, if still limited, raises a distinguishable rate-limit error; retry-exhausted raises a distinguishable availability error with no partial result (FR-014, research R6/R7)
-- [ ] T009 Implement the shared transport concern (timeout + bounded retry + rate-limit handling) in `lib/bml_tokenization/transport.rb` to pass T008, and route base `Resource` requests through it (depends on T008, T006)
-- [ ] T010 [P] Write failing unit spec for the shared audit concern in `spec/unit/audit_spec.rb` — asserts a state-change audit record captures `action`, `card_reference`, `actor` (client identity + optional integrator actor), `occurred_at`, and `outcome`, and contains NO card data beyond the safe reference (FR-006a, FR-015, research R10)
-- [ ] T011 Implement the shared audit concern in `lib/bml_tokenization/audit.rb` to pass T010 (depends on T010)
-- [ ] T012 [P] Write failing unit spec for the `CardOnFile` value object in `spec/unit/card_on_file_spec.rb` — asserts fields `reference`, `customer_id`, `scheme`, `last_four`, `expiry_month`, `expiry_year`, `status`, `created_at`, and a derived `expired?`; asserts NO full PAN, CVV, single-use handle, or SAD attribute exists on the object or its serialization (data-model.md, FR-003)
-- [ ] T013 Implement the `CardOnFile` value object in `lib/bml_tokenization/card_on_file.rb` to pass T012 (depends on T012)
-- [ ] T014 Implement the `CardsOnFile` resource skeleton and the `client.cards_on_file` accessor (FR-001) in `lib/bml_tokenization/cards_on_file.rb` and register it on `lib/bml_tokenization/client.rb` (depends on T004, T006)
+- [X] T004 Establish/verify the shared configured `Client` (base URL, sandbox/production environment selection, credential/auth injection, TLS-only transport, configurable request timeout) in `lib/bml_tokenization/client.rb` (FR-008, FR-009, FR-014, Constitution I/III)
+- [X] T005 [P] Establish/extend the shared mapped error hierarchy — validation, not-found, conflict, authentication/config, **rate-limit**, and availability/timeout — in `lib/bml_tokenization/errors.rb` (FR-010, FR-014)
+- [X] T006 [P] Establish/verify base `Resource` HTTP/JSON request-response behavior (build request, parse JSON, dispatch to error mapping, route through the transport concern) in `lib/bml_tokenization/resource.rb`
+- [X] T007 [P] Establish/verify the shared masking + structured-logging concern (scrubs SAD/PAN, never logs the single-use handle; logs only safe reference/outcome) in `lib/bml_tokenization/masking.rb` (FR-003, Constitution IV)
+- [X] T008 [P] Write failing unit spec for the shared transport concern in `spec/unit/transport_spec.rb` — asserts a configurable timeout; bounded automatic retry (≤2, with backoff) on transient failures (connection error, timeout, 5xx); non-transient errors (validation, not-found, auth) are NOT retried; a 429 is retried honoring `Retry-After` and, if still limited, raises a distinguishable rate-limit error; retry-exhausted raises a distinguishable availability error with no partial result (FR-014, research R6/R7)
+- [X] T009 Implement the shared transport concern (timeout + bounded retry + rate-limit handling) in `lib/bml_tokenization/transport.rb` to pass T008, and route base `Resource` requests through it (depends on T008, T006)
+- [X] T010 [P] Write failing unit spec for the shared audit concern in `spec/unit/audit_spec.rb` — asserts a state-change audit record captures `action`, `card_reference`, `actor` (client identity + optional integrator actor), `occurred_at`, and `outcome`, and contains NO card data beyond the safe reference (FR-006a, FR-015, research R10)
+- [X] T011 Implement the shared audit concern in `lib/bml_tokenization/audit.rb` to pass T010 (depends on T010)
+- [X] T012 [P] Write failing unit spec for the `CardOnFile` value object in `spec/unit/card_on_file_spec.rb` — asserts fields `reference`, `customer_id`, `scheme`, `last_four`, `expiry_month`, `expiry_year`, `status`, `created_at`, and a derived `expired?`; asserts NO full PAN, CVV, single-use handle, or SAD attribute exists on the object or its serialization (data-model.md, FR-003)
+- [X] T013 Implement the `CardOnFile` value object in `lib/bml_tokenization/card_on_file.rb` to pass T012 (depends on T012)
+- [X] T014 Implement the `CardsOnFile` resource skeleton and the `client.cards_on_file` accessor (FR-001) in `lib/bml_tokenization/cards_on_file.rb` and register it on `lib/bml_tokenization/client.rb` (depends on T004, T006)
 
 **Checkpoint**: Foundation ready — user stories can now proceed.
 
@@ -77,14 +77,14 @@ input and confirm a field-naming validation error with no network call.
 
 ### Tests for User Story 1 (write first, must FAIL before implementation)
 
-- [ ] T015 [P] [US1] Contract test for store in `spec/contract/cards_on_file_api_spec.rb` — `client.cards_on_file` accessor exists (FR-001); `store(customer_id:, card_handle:)` returns a `CardOnFile` with a safe `reference` + masked summary and NO full card number (FR-002, FR-003); missing/blank `customer_id` or `card_handle` raises a validation error naming the input with NO network call (FR-007, SC-006); a re-store of an already-on-file card returns the existing record with no duplicate (FR-013); store emits a `store` audit record with no card data (FR-015)
-- [ ] T016 [P] [US1] Remote contract test for the store endpoint in `spec/contract/cards_on_file_remote_spec.rb` — WebMock stub asserts the request body carries only `customer_id` + `card_handle` and NO PAN/CVV/SAD; a response indicating already-on-file (200/201/409-with-reference) is normalized to an idempotent success returning the existing reference (FR-013); maps invalid/consumed/expired handle→validation, unknown customer→not-found/validation, auth→auth, 429→rate-limit, timeout/5xx→availability (contracts/bml-remote.md)
-- [ ] T017 [P] [US1] Unit test for store local validation, idempotency normalization, and audit emission in `spec/unit/cards_on_file_spec.rb` — required-input validation runs before any remote call; duplicate is normalized to an idempotent return; a `store` audit record is emitted; the single-use handle never appears in output or logs
+- [X] T015 [P] [US1] Contract test for store in `spec/contract/cards_on_file_api_spec.rb` — `client.cards_on_file` accessor exists (FR-001); `store(customer_id:, card_handle:)` returns a `CardOnFile` with a safe `reference` + masked summary and NO full card number (FR-002, FR-003); missing/blank `customer_id` or `card_handle` raises a validation error naming the input with NO network call (FR-007, SC-006); a re-store of an already-on-file card returns the existing record with no duplicate (FR-013); store emits a `store` audit record with no card data (FR-015)
+- [X] T016 [P] [US1] Remote contract test for the store endpoint in `spec/contract/cards_on_file_remote_spec.rb` — WebMock stub asserts the request body carries only `customer_id` + `card_handle` and NO PAN/CVV/SAD; a response indicating already-on-file (200/201/409-with-reference) is normalized to an idempotent success returning the existing reference (FR-013); maps invalid/consumed/expired handle→validation, unknown customer→not-found/validation, auth→auth, 429→rate-limit, timeout/5xx→availability (contracts/bml-remote.md)
+- [X] T017 [P] [US1] Unit test for store local validation, idempotency normalization, and audit emission in `spec/unit/cards_on_file_spec.rb` — required-input validation runs before any remote call; duplicate is normalized to an idempotent return; a `store` audit record is emitted; the single-use handle never appears in output or logs
 
 ### Implementation for User Story 1
 
-- [ ] T018 [US1] Implement `store` in `lib/bml_tokenization/cards_on_file.rb` — validate `customer_id` + `card_handle` before the remote call, POST via the base `Resource`/transport, build a `CardOnFile` from the response, normalize an already-on-file result to an idempotent success, emit a `store` audit record (with optional `actor:`), and map remote errors (depends on T015–T017)
-- [ ] T019 [US1] Add an opt-in, credential-gated sandbox integration test for store (including environment isolation and idempotent re-store) in `spec/integration/cards_on_file_sandbox_spec.rb` (FR-012, US1-3, SC-005, FR-013)
+- [X] T018 [US1] Implement `store` in `lib/bml_tokenization/cards_on_file.rb` — validate `customer_id` + `card_handle` before the remote call, POST via the base `Resource`/transport, build a `CardOnFile` from the response, normalize an already-on-file result to an idempotent success, emit a `store` audit record (with optional `actor:`), and map remote errors (depends on T015–T017)
+- [X] T019 [US1] Add an opt-in, credential-gated sandbox integration test for store (including environment isolation and idempotent re-store) in `spec/integration/cards_on_file_sandbox_spec.rb` (FR-012, US1-3, SC-005, FR-013)
 
 **Checkpoint**: Store works end-to-end and is independently testable (MVP).
 
@@ -101,15 +101,15 @@ error).
 
 ### Tests for User Story 2 (write first, must FAIL before implementation)
 
-- [ ] T020 [P] [US2] Unit test for the `CardOnFileList` value object in `spec/unit/card_on_file_list_spec.rb` — asserts `customer_id` and `records` (each a `CardOnFile`), that an empty `records` set is valid (not an error), and that no pagination fields are required (data-model.md, R11)
-- [ ] T021 [P] [US2] Contract test for list in `spec/contract/cards_on_file_api_spec.rb` — `list(customer_id:)` returns a `CardOnFileList` containing all the customer's cards with safe reference + masked summary (FR-004); a customer with no cards yields an empty list, not an error (US2-2); list emits NO audit record (FR-015)
-- [ ] T022 [P] [US2] Remote contract test for the list endpoint in `spec/contract/cards_on_file_remote_spec.rb` — WebMock stub asserts no pagination params are sent and that an empty `data` array yields an empty `CardOnFileList` (contracts/bml-remote.md)
+- [X] T020 [P] [US2] Unit test for the `CardOnFileList` value object in `spec/unit/card_on_file_list_spec.rb` — asserts `customer_id` and `records` (each a `CardOnFile`), that an empty `records` set is valid (not an error), and that no pagination fields are required (data-model.md, R11)
+- [X] T021 [P] [US2] Contract test for list in `spec/contract/cards_on_file_api_spec.rb` — `list(customer_id:)` returns a `CardOnFileList` containing all the customer's cards with safe reference + masked summary (FR-004); a customer with no cards yields an empty list, not an error (US2-2); list emits NO audit record (FR-015)
+- [X] T022 [P] [US2] Remote contract test for the list endpoint in `spec/contract/cards_on_file_remote_spec.rb` — WebMock stub asserts no pagination params are sent and that an empty `data` array yields an empty `CardOnFileList` (contracts/bml-remote.md)
 
 ### Implementation for User Story 2
 
-- [ ] T023 [US2] Implement the `CardOnFileList` value object (`customer_id`, `records`) in `lib/bml_tokenization/card_on_file_list.rb` to pass T020 (depends on T020)
-- [ ] T024 [US2] Implement `list` in `lib/bml_tokenization/cards_on_file.rb` — validate `customer_id`, GET via the base `Resource`/transport, build a `CardOnFileList`, honor empty-list semantics, emit no audit record (depends on T021, T022, T023; shares file with T018)
-- [ ] T025 [US2] Add an opt-in, credential-gated sandbox integration test for list (store-then-list, and empty-list) in `spec/integration/cards_on_file_sandbox_spec.rb` (FR-012, US2-1, US2-2)
+- [X] T023 [US2] Implement the `CardOnFileList` value object (`customer_id`, `records`) in `lib/bml_tokenization/card_on_file_list.rb` to pass T020 (depends on T020)
+- [X] T024 [US2] Implement `list` in `lib/bml_tokenization/cards_on_file.rb` — validate `customer_id`, GET via the base `Resource`/transport, build a `CardOnFileList`, honor empty-list semantics, emit no audit record (depends on T021, T022, T023; shares file with T018)
+- [X] T025 [US2] Add an opt-in, credential-gated sandbox integration test for list (store-then-list, and empty-list) in `spec/integration/cards_on_file_sandbox_spec.rb` (FR-012, US2-1, US2-2)
 
 **Checkpoint**: Store + list both work independently (P1 core complete).
 
@@ -125,13 +125,13 @@ and expiry/validity is discoverable; retrieve an unknown reference and confirm a
 
 ### Tests for User Story 3 (write first, must FAIL before implementation)
 
-- [ ] T026 [P] [US3] Contract test for retrieve in `spec/contract/cards_on_file_api_spec.rb` — `retrieve(reference)` returns the current `CardOnFile` with masked summary and discoverable expiry/validity (`expired?`) (FR-005, edge case); an unknown reference raises a not-found error (US3-2); retrieve emits NO audit record (FR-015)
-- [ ] T027 [P] [US3] Remote contract test for the retrieve endpoint in `spec/contract/cards_on_file_remote_spec.rb` — WebMock stub maps 404→not-found and auth failure→auth, and asserts the response carries only masked data (no full PAN) (contracts/bml-remote.md)
+- [X] T026 [P] [US3] Contract test for retrieve in `spec/contract/cards_on_file_api_spec.rb` — `retrieve(reference)` returns the current `CardOnFile` with masked summary and discoverable expiry/validity (`expired?`) (FR-005, edge case); an unknown reference raises a not-found error (US3-2); retrieve emits NO audit record (FR-015)
+- [X] T027 [P] [US3] Remote contract test for the retrieve endpoint in `spec/contract/cards_on_file_remote_spec.rb` — WebMock stub maps 404→not-found and auth failure→auth, and asserts the response carries only masked data (no full PAN) (contracts/bml-remote.md)
 
 ### Implementation for User Story 3
 
-- [ ] T028 [US3] Implement `retrieve(reference)` in `lib/bml_tokenization/cards_on_file.rb` — GET via the base `Resource`/transport, build a `CardOnFile`, map not-found/auth errors, emit no audit record (depends on T026, T027; shares file with T018/T024)
-- [ ] T029 [US3] Add an opt-in, credential-gated sandbox integration test for retrieve (store-then-retrieve round-trip; expiry discoverable) in `spec/integration/cards_on_file_sandbox_spec.rb` (FR-012, US3-1)
+- [X] T028 [US3] Implement `retrieve(reference)` in `lib/bml_tokenization/cards_on_file.rb` — GET via the base `Resource`/transport, build a `CardOnFile`, map not-found/auth errors, emit no audit record (depends on T026, T027; shares file with T018/T024)
+- [X] T029 [US3] Add an opt-in, credential-gated sandbox integration test for retrieve (store-then-retrieve round-trip; expiry discoverable) in `spec/integration/cards_on_file_sandbox_spec.rb` (FR-012, US3-1)
 
 **Checkpoint**: Store + list + retrieve all work independently.
 
@@ -148,13 +148,13 @@ error with no other card affected; confirm a `remove` audit record (no card data
 
 ### Tests for User Story 4 (write first, must FAIL before implementation)
 
-- [ ] T030 [P] [US4] Contract test for remove in `spec/contract/cards_on_file_api_spec.rb` — `remove(reference)` permanently deletes the card (afterward retrieval returns not-found and it is absent from the customer's list; not recoverable) (FR-006, US4-1, SC-004); an already-removed or unknown reference raises a not-found error with no other card affected (US4-2); remove emits a `remove` audit record with no card data beyond the safe reference (FR-006a, FR-015)
-- [ ] T031 [P] [US4] Remote contract test for the remove endpoint in `spec/contract/cards_on_file_remote_spec.rb` — WebMock stub asserts a delete request and maps an unknown/already-removed reference (404)→not-found and auth failure→auth (contracts/bml-remote.md)
+- [X] T030 [P] [US4] Contract test for remove in `spec/contract/cards_on_file_api_spec.rb` — `remove(reference)` permanently deletes the card (afterward retrieval returns not-found and it is absent from the customer's list; not recoverable) (FR-006, US4-1, SC-004); an already-removed or unknown reference raises a not-found error with no other card affected (US4-2); remove emits a `remove` audit record with no card data beyond the safe reference (FR-006a, FR-015)
+- [X] T031 [P] [US4] Remote contract test for the remove endpoint in `spec/contract/cards_on_file_remote_spec.rb` — WebMock stub asserts a delete request and maps an unknown/already-removed reference (404)→not-found and auth failure→auth (contracts/bml-remote.md)
 
 ### Implementation for User Story 4
 
-- [ ] T032 [US4] Implement `remove(reference)` in `lib/bml_tokenization/cards_on_file.rb` — DELETE via the base `Resource`/transport, confirm permanent removal, emit a `remove` audit record (with optional `actor:`) carrying no card data, and map not-found/auth errors (depends on T030, T031; shares file with T018/T024/T028)
-- [ ] T033 [US4] Add an opt-in, credential-gated sandbox integration test for remove (store→remove→confirm gone from list and retrieval) in `spec/integration/cards_on_file_sandbox_spec.rb` (FR-012, US4-1, SC-004)
+- [X] T032 [US4] Implement `remove(reference)` in `lib/bml_tokenization/cards_on_file.rb` — DELETE via the base `Resource`/transport, confirm permanent removal, emit a `remove` audit record (with optional `actor:`) carrying no card data, and map not-found/auth errors (depends on T030, T031; shares file with T018/T024/T028)
+- [X] T033 [US4] Add an opt-in, credential-gated sandbox integration test for remove (store→remove→confirm gone from list and retrieval) in `spec/integration/cards_on_file_sandbox_spec.rb` (FR-012, US4-1, SC-004)
 
 **Checkpoint**: All four operations work independently.
 
@@ -164,13 +164,13 @@ error with no other card affected; confirm a `remove` audit record (no card data
 
 **Purpose**: Cross-cutting guarantees spanning all operations and final validation.
 
-- [ ] T034 [P] Cross-cutting unit test asserting no full PAN, CVV, single-use handle, or SAD appears in any output, error, or log across all four operations in `spec/unit/cards_on_file_spec.rb` (FR-003, SC-002)
-- [ ] T035 [P] Cross-cutting test asserting environment isolation — sandbox vs production route to the configured base URL and never cross — in `spec/contract/cards_on_file_remote_spec.rb` (FR-008, SC-005)
-- [ ] T036 [P] Cross-cutting resilience test asserting transient-failure retry-then-succeed, retry-exhausted→distinguishable availability error (no partial record), and 429→retry honoring `Retry-After`→distinguishable rate-limit error, across operations in `spec/contract/cards_on_file_remote_spec.rb` (FR-014, edge cases)
-- [ ] T037 [P] Cross-cutting audit test asserting `store` and `remove` emit an audit record (who/what/when/outcome, no card data) while `list` and `retrieve` emit none, in `spec/unit/cards_on_file_spec.rb` (FR-006a, FR-015)
-- [ ] T038 Wire structured logging (operation, customer id, card safe reference, outcome, timing) through the masking concern across all operations in `lib/bml_tokenization/cards_on_file.rb` (FR-003, Constitution IV)
-- [ ] T039 [P] Add cards-on-file usage documentation (store with a single-use handle, list, retrieve, remove; idempotent re-store; permanent removal; configurable timeout + retry; audit on state changes) to `README.md`
-- [ ] T040 Run the `quickstart.md` validation scenarios V1–V20 and confirm the deterministic suite is green (and the sandbox suite where credentials + a handle are provided)
+- [X] T034 [P] Cross-cutting unit test asserting no full PAN, CVV, single-use handle, or SAD appears in any output, error, or log across all four operations in `spec/unit/cards_on_file_spec.rb` (FR-003, SC-002)
+- [X] T035 [P] Cross-cutting test asserting environment isolation — sandbox vs production route to the configured base URL and never cross — in `spec/contract/cards_on_file_remote_spec.rb` (FR-008, SC-005)
+- [X] T036 [P] Cross-cutting resilience test asserting transient-failure retry-then-succeed, retry-exhausted→distinguishable availability error (no partial record), and 429→retry honoring `Retry-After`→distinguishable rate-limit error, across operations in `spec/contract/cards_on_file_remote_spec.rb` (FR-014, edge cases)
+- [X] T037 [P] Cross-cutting audit test asserting `store` and `remove` emit an audit record (who/what/when/outcome, no card data) while `list` and `retrieve` emit none, in `spec/unit/cards_on_file_spec.rb` (FR-006a, FR-015)
+- [X] T038 Wire structured logging (operation, customer id, card safe reference, outcome, timing) through the masking concern across all operations in `lib/bml_tokenization/cards_on_file.rb` (FR-003, Constitution IV)
+- [X] T039 [P] Add cards-on-file usage documentation (store with a single-use handle, list, retrieve, remove; idempotent re-store; permanent removal; configurable timeout + retry; audit on state changes) to `README.md`
+- [X] T040 Run the `quickstart.md` validation scenarios V1–V20 and confirm the deterministic suite is green (and the sandbox suite where credentials + a handle are provided)
 
 ---
 
