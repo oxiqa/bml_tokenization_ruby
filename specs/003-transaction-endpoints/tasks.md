@@ -33,11 +33,11 @@ Shared scaffolding (`client`, `errors`, `resource`, `masking`, `transport`, `aud
 
 **Purpose**: Gem project initialization and tooling
 
-- [ ] T001 Create/verify the gem structure per plan.md: `lib/bml_tokenization.rb` entry point,
+- [X] T001 Create/verify the gem structure per plan.md: `lib/bml_tokenization.rb` entry point,
   `lib/bml_tokenization/` and `spec/{contract,unit,integration}/` directories, `bml_tokenization.gemspec`,
   and `Gemfile`
-- [ ] T002 Configure RSpec and WebMock for deterministic HTTP stubbing in `spec/spec_helper.rb` and `.rspec`
-- [ ] T003 [P] Configure RuboCop (style/lint) in `.rubocop.yml`
+- [X] T002 Configure RSpec and WebMock for deterministic HTTP stubbing in `spec/spec_helper.rb` and `.rspec`
+- [X] T003 [P] Configure RuboCop (style/lint) in `.rubocop.yml`
 
 ---
 
@@ -48,20 +48,20 @@ operations depend on
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Ensure the shared configured `Client` (base URL, environment sandbox/production, TLS, auth
+- [X] T004 Ensure the shared configured `Client` (base URL, environment sandbox/production, TLS, auth
   headers) exposes a `transactions` accessor returning the Transactions resource, in
   `lib/bml_tokenization/client.rb` (FR-001, FR-007, FR-008)
-- [ ] T005 [P] Ensure the shared error hierarchy defines distinguishable `ValidationError`,
+- [X] T005 [P] Ensure the shared error hierarchy defines distinguishable `ValidationError`,
   `NotFoundError`, `ConflictError`, `AuthenticationError`, and `AvailabilityError` (add `ConflictError`
   if absent — new for this feature) in `lib/bml_tokenization/errors.rb` (FR-009, R10)
-- [ ] T006 [P] Ensure the shared base `Resource` behavior (client wiring, request helper) exists in
+- [X] T006 [P] Ensure the shared base `Resource` behavior (client wiring, request helper) exists in
   `lib/bml_tokenization/resource.rb`
-- [ ] T007 [P] Ensure the shared masking helper scrubs any PAN/CVV and treats the hosted payment URL as
+- [X] T007 [P] Ensure the shared masking helper scrubs any PAN/CVV and treats the hosted payment URL as
   a secret (never logged verbatim) in `lib/bml_tokenization/masking.rb` (FR-010, R11)
-- [ ] T008 Ensure the shared `transport` concern performs requests within a configurable timeout with
+- [X] T008 Ensure the shared `transport` concern performs requests within a configurable timeout with
   bounded automatic retry (≤2, backoff) on connection error/`5xx`/timeout and honors `Retry-After` on
   `429`, mapping exhausted failures to `AvailabilityError`, in `lib/bml_tokenization/transport.rb` (R2)
-- [ ] T009 [P] Ensure the shared `audit` concern emits a structured audit record (who/what/when/outcome)
+- [X] T009 [P] Ensure the shared `audit` concern emits a structured audit record (who/what/when/outcome)
   with no card data and no payment URL in `lib/bml_tokenization/audit.rb` (FR-012, R11)
 
 **Checkpoint**: Foundation ready — Transactions resource operations can now be built.
@@ -80,41 +80,41 @@ transaction (no second charge); call with a differing amount on that reference �
 
 ### Tests for User Story 1 (write first, must fail) ⚠️
 
-- [ ] T010 [P] [US1] Public-API contract test for `create` (both paths, required-field validation,
+- [X] T010 [P] [US1] Public-API contract test for `create` (both paths, required-field validation,
   MVR-only, amount rules, return-URL rule, idempotent replay, conflict) in
   `spec/contract/transactions_api_spec.rb` per `contracts/library-api.md`
-- [ ] T011 [P] [US1] Remote HTTP contract test for `POST /transactions` (redirect + stored-card request
+- [X] T011 [P] [US1] Remote HTTP contract test for `POST /transactions` (redirect + stored-card request
   shapes, `201` responses, `409` conflict, error mapping) using WebMock stubs in
   `spec/contract/transactions_remote_spec.rb` per `contracts/bml-remote.md`
-- [ ] T012 [P] [US1] Unit tests for create validation and idempotency in `spec/unit/transactions_spec.rb`
+- [X] T012 [P] [US1] Unit tests for create validation and idempotency in `spec/unit/transactions_spec.rb`
   (missing customer/amount/currency/reference; non-integer/zero/negative amount; non-MVR currency;
   missing return_url on redirect path; identical replay returns existing; differing-parameter reuse →
   conflict; global reference scope across customers) (FR-005, FR-005a–c, FR-013)
-- [ ] T013 [P] [US1] Unit tests for the `Transaction` entity in `spec/unit/transaction_spec.rb` (four
+- [X] T013 [P] [US1] Unit tests for the `Transaction` entity in `spec/unit/transaction_spec.rb` (four
   statuses; `payment_url` present only on redirect path; `card_reference` only on stored-card path;
   no full PAN/CVV field anywhere) (FR-006, FR-010, R6)
-- [ ] T014 [P] [US1] Opt-in, credential-gated sandbox integration test for create in
+- [X] T014 [P] [US1] Opt-in, credential-gated sandbox integration test for create in
   `spec/integration/transactions_sandbox_spec.rb` (skips cleanly without credentials) (FR-011)
 
 ### Implementation for User Story 1
 
-- [ ] T015 [P] [US1] Implement the `Transaction` value object (id, reference, customer_id, amount,
+- [X] T015 [P] [US1] Implement the `Transaction` value object (id, reference, customer_id, amount,
   currency, normalized `status` enum, optional payment_url/card_reference/return_url/created_at; no
   PAN/CVV) in `lib/bml_tokenization/transaction.rb` (data-model.md)
-- [ ] T016 [US1] Implement pre-remote create validation (presence → amount integer/positive → currency
+- [X] T016 [US1] Implement pre-remote create validation (presence → amount integer/positive → currency
   == MVR → return_url required when no card_reference) raising `ValidationError` naming the field, with
   no network call on failure, in `lib/bml_tokenization/transactions.rb` (FR-005, FR-005a–c, FR-002)
-- [ ] T017 [US1] Implement `Transactions#create` selecting the redirect vs stored-card path by
+- [X] T017 [US1] Implement `Transactions#create` selecting the redirect vs stored-card path by
   presence of `card_reference`, calling the shared transport and mapping the response to a
   `Transaction`, in `lib/bml_tokenization/transactions.rb` (depends on T015, T016, T004, T008) (FR-002)
-- [ ] T018 [US1] Implement idempotency + conflict handling on the global `reference`: identical replay
+- [X] T018 [US1] Implement idempotency + conflict handling on the global `reference`: identical replay
   returns the existing transaction (no second charge); differing material parameters raise
   `ConflictError` naming the mismatch, in `lib/bml_tokenization/transactions.rb` (depends on T017, T005)
   (FR-013, SC-007)
-- [ ] T019 [US1] Map remote create errors to the shared hierarchy (400→validation, 404→missing
+- [X] T019 [US1] Map remote create errors to the shared hierarchy (400→validation, 404→missing
   customer/not-found, 409→conflict, 401/403→auth, 429/5xx/timeout→availability) in
   `lib/bml_tokenization/transactions.rb` (depends on T017, T005) (FR-009, R10)
-- [ ] T020 [US1] Emit a `create` audit record (who = client identity + optional `actor`; what = create
+- [X] T020 [US1] Emit a `create` audit record (who = client identity + optional `actor`; what = create
   + id/reference; when; outcome) with no card data and no payment URL, in
   `lib/bml_tokenization/transactions.rb` (depends on T017, T009) (FR-012)
 
@@ -132,19 +132,19 @@ details match; retrieve an unknown id and confirm a not-found error.
 
 ### Tests for User Story 2 (write first, must fail) ⚠️
 
-- [ ] T021 [US2] Add public-API + remote contract tests for `retrieve` (`GET /transactions/{id}`:
+- [X] T021 [US2] Add public-API + remote contract tests for `retrieve` (`GET /transactions/{id}`:
   current record with normalized status; unknown id → not-found; auth/availability mapping) in
   `spec/contract/transactions_api_spec.rb` and `spec/contract/transactions_remote_spec.rb`
   (US2-1, US2-2)
-- [ ] T022 [US2] Add retrieve unit tests (status distinguishable incl. `pending`; not-found on unknown
+- [X] T022 [US2] Add retrieve unit tests (status distinguishable incl. `pending`; not-found on unknown
   id) in `spec/unit/transactions_spec.rb` (FR-003, FR-006)
 
 ### Implementation for User Story 2
 
-- [ ] T023 [US2] Implement `Transactions#retrieve(id)` returning the current `Transaction` with
+- [X] T023 [US2] Implement `Transactions#retrieve(id)` returning the current `Transaction` with
   normalized status, mapping unknown id → `NotFoundError`, in `lib/bml_tokenization/transactions.rb`
   (depends on T017) (FR-003, FR-006)
-- [ ] T024 [US2] Emit a `retrieve` audit record (who/what/when/outcome, no card data) in
+- [X] T024 [US2] Emit a `retrieve` audit record (who/what/when/outcome, no card data) in
   `lib/bml_tokenization/transactions.rb` (depends on T023, T009) (FR-012)
 
 **Checkpoint**: User Stories 1 AND 2 both work independently (create + confirm outcome).
@@ -162,21 +162,21 @@ rejection; request a page beyond the results and confirm an empty page.
 
 ### Tests for User Story 3 (write first, must fail) ⚠️
 
-- [ ] T025 [US3] Add public-API + remote contract tests for `list` (page-number pagination; default 20
+- [X] T025 [US3] Add public-API + remote contract tests for `list` (page-number pagination; default 20
   / reject `page_size` > 100; optional combinable customer/status filters; unknown status → validation
   error; empty/out-of-range page → empty page, not error) in `spec/contract/transactions_api_spec.rb`
   and `spec/contract/transactions_remote_spec.rb` (US3-1..US3-5, FR-004)
-- [ ] T026 [P] [US3] Unit tests for the `TransactionList` page in `spec/unit/transaction_list_spec.rb`
+- [X] T026 [P] [US3] Unit tests for the `TransactionList` page in `spec/unit/transaction_list_spec.rb`
   (records/page/page_size/total_count; default 20; max 100; empty page is not an error) (FR-004, R7)
 
 ### Implementation for User Story 3
 
-- [ ] T027 [P] [US3] Implement the `TransactionList` value object (records + page/page_size/total_count
+- [X] T027 [P] [US3] Implement the `TransactionList` value object (records + page/page_size/total_count
   metadata) in `lib/bml_tokenization/transaction_list.rb` (data-model.md)
-- [ ] T028 [US3] Implement `Transactions#list` with page-number pagination (default 20) and optional
+- [X] T028 [US3] Implement `Transactions#list` with page-number pagination (default 20) and optional
   `customer_id`/`status` filters, mapping the response to a `TransactionList`, in
   `lib/bml_tokenization/transactions.rb` (depends on T027, T017) (FR-004)
-- [ ] T029 [US3] Enforce list validation: reject `page_size` > 100 and unrecognized `status` filter
+- [X] T029 [US3] Enforce list validation: reject `page_size` > 100 and unrecognized `status` filter
   locally with `ValidationError`; return an empty page (not an error) when no records match, in
   `lib/bml_tokenization/transactions.rb` (depends on T028) (FR-004, R7)
 
@@ -188,14 +188,14 @@ rejection; request a page beyond the results and confirm an empty page.
 
 **Purpose**: Guarantees that span all operations
 
-- [ ] T030 [P] Add a leakage-inspection unit test asserting no full PAN/CVV and no hosted payment URL
+- [X] T030 [P] Add a leakage-inspection unit test asserting no full PAN/CVV and no hosted payment URL
   appears in any output, error, or log across create/retrieve/list, in `spec/unit/transactions_spec.rb`
   (FR-010, SC-005, R11)
-- [ ] T031 [P] Document Transactions usage (both create paths, idempotency/conflict, list filters) in
+- [X] T031 [P] Document Transactions usage (both create paths, idempotency/conflict, list filters) in
   the gem README / `docs/`
-- [ ] T032 Run the `quickstart.md` validation scenarios V1–V27 (deterministic suite green; sandbox
+- [X] T032 Run the `quickstart.md` validation scenarios V1–V27 (deterministic suite green; sandbox
   suite green where credentials are provided) and confirm SC-001..SC-007
-- [ ] T033 [P] RuboCop clean-up and refactor for consistency with sibling resources
+- [X] T033 [P] RuboCop clean-up and refactor for consistency with sibling resources
 
 ---
 

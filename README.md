@@ -2,13 +2,15 @@
 
 A thin, contract-driven Ruby client for the Bank of Maldives tokenization / Connect
 platform. A configured client object exposes per-resource classes; this release ships
-the **Customers** resource (create, retrieve, list, update) and the **Cards-on-file**
-resource (store, list, retrieve, remove).
+the **Customers** resource (create, retrieve, list, update), the **Cards-on-file**
+resource (store, list, retrieve, remove), and the **Transactions** resource (create,
+retrieve, list).
 
 > **Security:** this library never accepts, stores, or logs a full card number (PAN),
 > CVV/CVV2, PIN, track data, the single-use card handle, or any Sensitive Authentication
 > Data (SAD). A stored card is exposed only as a safe reference plus a masked summary
-> (scheme, last four, expiry).
+> (scheme, last four, expiry). A payment's hosted redirect URL is treated as a completion
+> secret and is never logged or placed in an audit record.
 
 ## Installation
 
@@ -54,10 +56,12 @@ the client raises a distinguishable `AvailabilityError` (outage/timeout) or
 
 ### Audit records (state changes)
 
-State-changing card-on-file operations (`store`, `remove`) emit an audit record capturing
-**who** (the configured App ID plus an optional integrator-supplied `actor:`), **which**
-card reference, **when**, and the **outcome** — and never any card data beyond the safe
-reference. Reads (`list`, `retrieve`) are not audited. Provide an `audit_sink` (any object
+State-changing operations emit an audit record capturing **who** (the configured App ID
+plus an optional integrator-supplied `actor:`), **what** (the operation and the affected
+safe identifier), **when**, and the **outcome** — and never any card data beyond a safe
+reference, nor a hosted payment URL. This covers card-on-file `store`/`remove` and, for
+transactions, both `create` **and** `retrieve` (per FR-012). Card-on-file reads (`list`,
+`retrieve`) and transaction `list` are not audited. Provide an `audit_sink` (any object
 responding to `#call` or `#<<`) to receive each record.
 
 ## Customers resource
@@ -195,15 +199,113 @@ already-removed reference raises `NotFoundError` and affects no other card. Emit
 client.cards_on_file.remove("card_ref_123", actor: "user-42")  # => true
 ```
 
+## Transactions resource
+
+Reach the resource through `client.transactions`. A transaction is a payment for an
+**existing customer**; the amount is a **positive integer in MVR minor units** (e.g.
+`15000` = MVR 150.00) and the currency is **`"MVR"` only** — both validated locally
+before any network call. A transaction is returned as a `BmlTokenization::Transaction`
+whose `status` is one of four values: `pending`, `succeeded`, `failed`, `cancelled`.
+
+### Create
+
+`create` has two completion paths, selected by whether a stored-card safe reference is
+supplied:
+
+- **Redirect path** (no `card_reference`): a `return_url` is **required**. Returns a
+  `pending` transaction carrying a hosted `payment_url` to send the customer's browser to.
+- **Stored-card path** (`card_reference:` given): the payment is charged **server-side**
+  with no redirect; the returned `status` (`succeeded`/`failed`) reflects the outcome and
+  there is **no** `payment_url`.
+
+Required: `customer_id`, `amount`, `currency` (`"MVR"`), `reference`. Optional `actor:` is
+recorded in the audit record.
+
+```ruby
+# Redirect path
+txn = client.transactions.create(
+  customer_id: "cust_123",
+  amount:      15_000,                          # positive integer, MVR minor units
+  currency:    "MVR",
+  reference:   "order-8842",                    # your idempotency key (globally unique)
+  return_url:  "https://merchant.example/return",
+  actor:       "user-42"                        # optional, for the audit record
+)
+
+txn.id           # => "txn_..."
+txn.status       # => "pending"
+txn.payment_url  # => "https://connect.bml.example/pay/txn_..."  (send the customer here)
+
+# Stored-card path (charged server-side, no redirect)
+charged = client.transactions.create(
+  customer_id:    "cust_123",
+  amount:         15_000,
+  currency:       "MVR",
+  reference:      "order-8843",
+  card_reference: "card_ref_123"                # a card-on-file safe reference
+)
+charged.status       # => "succeeded" / "failed"
+charged.payment_url  # => nil
+```
+
+Local validation (no network call on failure) raises `ValidationError` with `#field`
+naming the offender: a missing required field, a non-integer/zero/negative `amount`, a
+non-`"MVR"` `currency`, or a missing `return_url` on the redirect path.
+
+**Idempotency & conflict (on the global `reference`):** repeating a `create` with the
+**same** `reference` **and identical** material parameters returns the **existing**
+transaction — no second charge. Reusing a `reference` with a **differing** material
+parameter (amount, currency, customer, or card) raises `ConflictError` naming the
+mismatch. The `reference` namespace is **global**, not per customer.
+
+### Retrieve
+
+Look up a transaction by id — primarily to learn its current status. Emits a `retrieve`
+audit record.
+
+```ruby
+txn = client.transactions.retrieve("txn_123")
+txn.status  # => "pending" / "succeeded" / "failed" / "cancelled"
+```
+
+An unknown id raises `BmlTokenization::NotFoundError`.
+
+### List (pagination + filters)
+
+Page-number pagination. `page` defaults to 1; `page_size` defaults to 20 and must not
+exceed 100 (an over-cap `page_size` is rejected locally). Optional, combinable filters:
+`customer_id` and `status` (an unrecognized `status` is rejected locally). Returns a
+`BmlTokenization::TransactionList`. Not audited.
+
+```ruby
+page = client.transactions.list(
+  page:        1,
+  page_size:   20,
+  customer_id: "cust_123",   # optional filter
+  status:      "succeeded"   # optional filter; one of the four statuses
+)
+
+page.records      # => [BmlTokenization::Transaction, ...]
+page.page         # => 1
+page.page_size    # => 20
+page.total_count  # => total matching, when the platform returns it
+page.empty?       # => true when nothing matches
+
+page.each { |txn| puts "#{txn.id}: #{txn.status}" }  # TransactionList is Enumerable
+```
+
+Listing when nothing matches, or requesting a page beyond the results, returns an **empty
+page** — not an error.
+
 ## Errors
 
 Every failure maps to a distinguishable subclass of `BmlTokenization::Error`:
 
 | Class | Condition |
 |-------|-----------|
-| `ValidationError` | Missing/invalid field (local pre-remote or platform-reported). `#field` names the offender. |
-| `NotFoundError` | Unknown customer or card reference. |
-| `ConflictError` | Genuine conflict per platform rules. (An already-on-file card is normalized to an idempotent success, not an error.) |
+| `ValidationError` | Missing/invalid field (local pre-remote or platform-reported), incl. bad amount, non-MVR currency, or over-cap page size. `#field` names the offender. |
+| `NotFoundError` | Unknown customer, card reference, or transaction id (incl. a create against a non-existent customer). |
+| `ConflictError` | Genuine conflict per platform rules — including a transaction `reference` reused with differing parameters (`#body` carries the existing record when the platform returns it). An already-on-file card, and an identical transaction replay, are normalized to an idempotent success, not an error. |
 | `AuthenticationError` | Missing/invalid credentials or client configuration. |
 | `ConfigurationError` | Setup problem detected before the request (e.g. non-TLS base URL). Subclass of `AuthenticationError`. |
 | `RateLimitError` | Still rate-limited after the bounded retry budget. `#retry_after` carries the server hint. |
@@ -227,4 +329,8 @@ BML_ENV=sandbox BML_API_KEY=... BML_APP_ID=... \
 # Cards-on-file (also needs a single-use card handle)
 BML_ENV=sandbox BML_API_KEY=... BML_APP_ID=... BML_CARD_HANDLE=... \
   bundle exec rspec spec/integration/cards_on_file_sandbox_spec.rb
+
+# Transactions (needs an existing customer id; BML_CARD_REFERENCE enables the stored-card path)
+BML_ENV=sandbox BML_API_KEY=... BML_APP_ID=... BML_CUSTOMER_ID=... \
+  bundle exec rspec spec/integration/transactions_sandbox_spec.rb
 ```
