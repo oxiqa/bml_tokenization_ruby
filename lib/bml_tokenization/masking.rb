@@ -12,12 +12,14 @@ module BmlTokenization
   module Masking
     module_function
 
-    # Keys whose values must never be logged verbatim.
+    # Keys whose values must never be logged verbatim. +payment_url+ is a
+    # payment-completion secret (a hosted redirect link) and is filtered like a
+    # credential so it is never emitted in a log line (FR-010, R11).
     SENSITIVE_KEYS = %w[
       pan card_number cardnumber number cvv cvv2 cvc cvn pin
       track track1 track2 track_data password secret token
       api_key apikey app_id authorization auth
-      card_handle handle
+      card_handle handle payment_url
     ].freeze
 
     # Customer PII keys that are minimized (partially masked) rather than

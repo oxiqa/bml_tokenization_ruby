@@ -58,6 +58,11 @@ module BmlTokenization
       @cards_on_file ||= CardsOnFile.new(self)
     end
 
+    # The Transactions resource bound to this client (FR-001, FR-007, FR-008).
+    def transactions
+      @transactions ||= Transactions.new(self)
+    end
+
     # Credential headers injected on every request. Never logged (FR-008).
     def auth_headers
       headers = {}

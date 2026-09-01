@@ -23,6 +23,13 @@ Style/StringLiterals:
 Metrics/ParameterLists:
   CountKeywordArgs: false
 
+# The Transactions resource is the widest by design — three operations, two
+# create paths (redirect / stored-card), idempotency-and-conflict handling, and
+# strict pre-remote validation of five fields — so its cohesive validation and
+# request-building helpers push it modestly past the default class length.
+Metrics/ClassLength:
+  Max: 140
+
 Metrics/MethodLength:
   Max: 25
 

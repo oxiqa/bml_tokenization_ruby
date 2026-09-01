@@ -3,29 +3,25 @@
 require "time"
 
 module BmlTokenization
-  # An immutable audit record emitted for a state-changing operation (store,
-  # remove). It captures who / what / when / outcome and — by construction —
-  # carries no card data beyond the safe reference (FR-006a, FR-015, R10).
+  # An immutable audit record emitted for a state-changing operation. It captures
+  # who / what / when / outcome and — by construction — carries only the safe
+  # identifiers handed to it: never a PAN, CVV, single-use handle, or a hosted
+  # payment URL (FR-006a, FR-012, FR-015, R10/R11).
   #
-  # Only the five fields below exist on the record; there is no slot for a PAN,
-  # CVV, the single-use handle, or the masked summary.
+  # The record is built from an ordered attribute hash (the "subject" identifiers
+  # sit between the action and the actor). Only those attributes are exposed —
+  # anything not supplied is not a method on the record, so a caller cannot read
+  # card data off it and a serialization cannot leak it.
   class AuditRecord
-    ATTRIBUTES = %i[action card_reference actor occurred_at outcome].freeze
-
-    attr_reader(*ATTRIBUTES)
-
-    def initialize(action:, card_reference:, actor:, occurred_at:, outcome:)
-      @action = action
-      @card_reference = card_reference
-      @actor = actor
-      @occurred_at = occurred_at
-      @outcome = outcome
+    def initialize(attributes)
+      @attributes = attributes.dup
+      @attributes.each_key do |name|
+        define_singleton_method(name) { @attributes[name] }
+      end
     end
 
     def to_h
-      ATTRIBUTES.each_with_object({}) do |name, acc|
-        acc[name] = public_send(name)
-      end
+      @attributes.dup
     end
 
     def ==(other)
@@ -39,30 +35,55 @@ module BmlTokenization
   end
 
   # Shared audit concern: builds and dispatches an {AuditRecord} for a
-  # state-changing action. Reads (list, retrieve) never call this (FR-015).
+  # state-changing action. Reads that are out of FR-012/FR-015 scope (card list,
+  # card retrieve; transaction list) never call this.
   #
   # "Who" is the configured client/API identity (the App ID) plus an optional
-  # integrator-supplied actor reference. The record is dispatched to the
-  # client's +audit_sink+ (a callable or an appendable) when one is configured.
+  # integrator-supplied actor reference. The record is dispatched to the client's
+  # +audit_sink+ (a callable or an appendable) when one is configured.
   module Audit
     module_function
 
-    # Build and dispatch an audit record, returning it.
+    # Build and dispatch a card state-change record (002), returning it. The
+    # subject is the card's safe reference — never any card data.
     def emit(client, action:, card_reference:, outcome:, actor: nil)
       record = build(client, action: action, card_reference: card_reference, outcome: outcome, actor: actor)
       dispatch(client, record)
       record
     end
 
-    # Build an audit record without dispatching (used in tests and by {emit}).
+    # Build a card state-change record without dispatching (used in tests and by
+    # {emit}).
     def build(client, action:, card_reference:, outcome:, actor: nil)
-      AuditRecord.new(
-        action: action.to_s,
-        card_reference: card_reference,
-        actor: actor_identity(client, actor),
-        occurred_at: Time.now.utc,
-        outcome: outcome.to_s
-      )
+      record_for(client, action: action, outcome: outcome, actor: actor,
+                         subject: { card_reference: card_reference })
+    end
+
+    # Build and dispatch a generic event record (003 transactions and future
+    # resources), returning it. +subject+ is a hash of SAFE identifiers only
+    # (e.g. transaction_id / reference) — never card data or a payment URL
+    # (FR-012, R11).
+    def emit_event(client, action:, outcome:, subject: {}, actor: nil)
+      record = build_event(client, action: action, outcome: outcome, subject: subject, actor: actor)
+      dispatch(client, record)
+      record
+    end
+
+    # Build a generic event record without dispatching (used in tests and by
+    # {emit_event}).
+    def build_event(client, action:, outcome:, subject: {}, actor: nil)
+      record_for(client, action: action, outcome: outcome, actor: actor, subject: subject)
+    end
+
+    # Assemble the ordered attribute hash and wrap it in an {AuditRecord}:
+    # action, then the safe subject identifiers, then who / when / outcome.
+    def record_for(client, action:, outcome:, actor:, subject:)
+      attributes = { action: action.to_s }
+      subject.each { |name, value| attributes[name] = value }
+      attributes[:actor] = actor_identity(client, actor)
+      attributes[:occurred_at] = Time.now.utc
+      attributes[:outcome] = outcome.to_s
+      AuditRecord.new(attributes)
     end
 
     # "Who": the client/API identity plus the optional integrator actor.
