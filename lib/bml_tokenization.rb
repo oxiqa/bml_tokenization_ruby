@@ -15,6 +15,8 @@ require "bml_tokenization/cards_on_file"
 require "bml_tokenization/transaction"
 require "bml_tokenization/transaction_list"
 require "bml_tokenization/transactions"
+require "bml_tokenization/token"
+require "bml_tokenization/tokenization"
 require "bml_tokenization/client"
 
 # Ruby client library for the Bank of Maldives tokenization / Connect platform.

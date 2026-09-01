@@ -297,6 +297,59 @@ page.each { |txn| puts "#{txn.id}: #{txn.status}" }  # TransactionList is Enumer
 Listing when nothing matches, or requesting a page beyond the results, returns an **empty
 page** — not an error.
 
+## Tokenization resource
+
+Convert a captured card into a masked, non-reversible **token**, look up a token's
+current details, and revoke a token. Reached via `client.tokenization`. The only card
+input accepted is a **single-use hosted-capture handle** — a raw PAN or CVV is never
+accepted, returned, or logged, and there is deliberately **no detokenization / reveal-PAN
+operation** of any kind. Every operation runs against the client's configured environment
+and credentials, and emits a card-data-free audit record.
+
+The returned `BmlTokenization::Token` exposes only masked fields — `reference`, `scheme`,
+`last4`, `expiry_month`, `expiry_year`, `status` (plus the informational `environment`) —
+and its `inspect`/`to_s`/`to_h` render nothing else.
+
+### Tokenize
+
+Issue a token from a single-use handle. Returns an `active` `Token`. Idempotent per account
++ environment: re-tokenizing the same card returns the **existing** token, never a
+duplicate. A missing/blank handle — or an `actor` that looks like a card number — is
+rejected locally before any remote call. Emits a `tokenize` audit record.
+
+```ruby
+token = client.tokenization.tokenize("single_use_handle_from_hosted_capture", actor: "user-42")
+
+token.reference     # => "tok_9f3a…" (opaque, non-reversible; used by cards-on-file / transactions)
+token.status        # => "active"
+token.last4         # => "4242"
+token.environment   # => :sandbox
+```
+
+### Retrieve
+
+Look up a token's current masked details and validity status. An unknown reference raises
+`BmlTokenization::NotFoundError`. Emits a `retrieve` audit record.
+
+```ruby
+token = client.tokenization.retrieve("tok_9f3a…")
+token.status      # => "active" / "revoked" / "expired"
+token.active?     # => true
+```
+
+### Revoke (permanent)
+
+Permanently invalidate a token (terminal `revoked`; never reactivated). **No cascade** —
+revoking does not delete or mutate any card-on-file or transaction record that references
+the token; those references simply become unusable, and later use is rejected by the
+consuming operation. An unknown reference raises `NotFoundError`; an already-revoked token
+raises `ConflictError`. Emits a `revoke` audit record.
+
+```ruby
+token = client.tokenization.revoke("tok_9f3a…")
+token.revoked?    # => true
+```
+
 ## Errors
 
 Every failure maps to a distinguishable subclass of `BmlTokenization::Error`:
@@ -304,8 +357,8 @@ Every failure maps to a distinguishable subclass of `BmlTokenization::Error`:
 | Class | Condition |
 |-------|-----------|
 | `ValidationError` | Missing/invalid field (local pre-remote or platform-reported), incl. bad amount, non-MVR currency, or over-cap page size. `#field` names the offender. |
-| `NotFoundError` | Unknown customer, card reference, or transaction id (incl. a create against a non-existent customer). |
-| `ConflictError` | Genuine conflict per platform rules — including a transaction `reference` reused with differing parameters (`#body` carries the existing record when the platform returns it). An already-on-file card, and an identical transaction replay, are normalized to an idempotent success, not an error. |
+| `NotFoundError` | Unknown customer, card reference, transaction id, or token reference (incl. a create against a non-existent customer, or retrieve/revoke of an unknown token). |
+| `ConflictError` | Genuine conflict per platform rules — including a transaction `reference` reused with differing parameters, and revoking an already-revoked token (`#body` carries the existing record when the platform returns it). An already-on-file card, an identical transaction replay, and re-tokenizing the same card are normalized to an idempotent success, not an error. |
 | `AuthenticationError` | Missing/invalid credentials or client configuration. |
 | `ConfigurationError` | Setup problem detected before the request (e.g. non-TLS base URL). Subclass of `AuthenticationError`. |
 | `RateLimitError` | Still rate-limited after the bounded retry budget. `#retry_after` carries the server hint. |
@@ -333,4 +386,14 @@ BML_ENV=sandbox BML_API_KEY=... BML_APP_ID=... BML_CARD_HANDLE=... \
 # Transactions (needs an existing customer id; BML_CARD_REFERENCE enables the stored-card path)
 BML_ENV=sandbox BML_API_KEY=... BML_APP_ID=... BML_CUSTOMER_ID=... \
   bundle exec rspec spec/integration/transactions_sandbox_spec.rb
+
+# Tokenization (needs a single-use card handle; BML_APP_ID_ALT enables the cross-account
+# isolation check, BML_PROD_API_KEY the environment-isolation check)
+BML_ENV=sandbox BML_API_KEY=... BML_APP_ID=... BML_CARD_HANDLE=... \
+  bundle exec rspec spec/integration/tokenize_sandbox_spec.rb \
+                    spec/integration/retrieve_sandbox_spec.rb \
+                    spec/integration/revoke_sandbox_spec.rb
 ```
+
+The tokenization resource returns masked-only tokens and exposes **no** operation that
+reveals a full card number.

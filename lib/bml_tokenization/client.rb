@@ -63,6 +63,11 @@ module BmlTokenization
       @transactions ||= Transactions.new(self)
     end
 
+    # The Tokenization resource bound to this client (FR-001, FR-008, FR-009).
+    def tokenization
+      @tokenization ||= Tokenization.new(self)
+    end
+
     # Credential headers injected on every request. Never logged (FR-008).
     def auth_headers
       headers = {}
